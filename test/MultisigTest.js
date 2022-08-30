@@ -1,4 +1,4 @@
-const { deployments, getChainId } = require("hardhat");
+const { deployments, getChainId, ethers } = require("hardhat");
 const skipIf = require("mocha-skip-if");
 const { expect } = require("chai");
 const {
@@ -10,11 +10,13 @@ skip.if(!developmentChains.includes(network.name)).describe(
     "MultiSig Initial Tests",
     async function () {
         let multisig;
+        let contractAddress;
 
-        this.beforeEach(async () => {
+        beforeEach(async () => {
             await deployments.fixture(["multisig"]);
             const Multisig = await deployments.get("Multisig");
-            multisig = await ethers.getContractAt("Multisig", Multisig.address);
+            contractAddress = Multisig.address;
+            multisig = await ethers.getContractAt("Multisig", contractAddress);
         });
 
         it("should have the owners set", async () => {
@@ -27,6 +29,26 @@ skip.if(!developmentChains.includes(network.name)).describe(
             }
             let own = [acc1, acc2, acc3];
             expect(JSON.stringify(own) == JSON.stringify(owners)).to.be.true;
+        });
+
+        it("should have the required count set", async () => {
+            let requiredCount = await multisig.required();
+            expect(requiredCount).to.equal(2);
+        });
+
+        //send transaction let from yesterday
+        it("should receive funds with fallback function", async () => {
+            const [deployer] = await ethers.getSigners();
+
+            let tx = {
+                // from: deployer.address,
+                to: contractAddress,
+                value: ethers.utils.parseUnits("1", "ether").toHexString(),
+            };
+            let sendTx = await deployer.sendTransaction(tx);
+            let receipt = await sendTx.wait(1);
+            let contractBal = await multisig.getBalance();
+            expect(contractBal).to.equal(ethers.utils.parseUnits("1", "ether"));
         });
     }
 );
