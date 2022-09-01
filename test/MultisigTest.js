@@ -204,8 +204,6 @@ skip.if(!developmentChains.includes(network.name)).describe(
                 expect(checkRevoke3 === false).to.be.true;
 
                 //execute function
-                // let execute = await multisigAcc1.execute(0);
-                // await execute.wait(1);
                 await expect(() =>
                     multisigAcc1.execute(0)
                 ).to.changeEtherBalance(
