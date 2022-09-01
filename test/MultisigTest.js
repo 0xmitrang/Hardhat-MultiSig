@@ -1,16 +1,18 @@
 const { deployments, getChainId, ethers } = require("hardhat");
 const skipIf = require("mocha-skip-if");
 const { expect } = require("chai");
+// const { anyValue } = require("@nomicfoundation/hardhat-chai-matchers/withArgs");
 const {
     networkConfig,
     developmentChains,
 } = require("../helper-hardhat-config");
 
 skip.if(!developmentChains.includes(network.name)).describe(
-    "MultiSig Initial Tests",
+    "MultiSig Unit Tests",
     async function () {
         let multisig;
         let contractAddress;
+        // let multisigAcc1, multisigAcc2, multisigAcc3;
 
         beforeEach(async () => {
             await deployments.fixture(["multisig"]);
@@ -19,8 +21,12 @@ skip.if(!developmentChains.includes(network.name)).describe(
             multisig = await ethers.getContractAt("Multisig", contractAddress);
         });
 
+        // it("should not accept wrong constructor arguments", async () => {});
+
         it("should have the owners set", async () => {
             let ownerCount = await multisig.getOwnerCount();
+            expect(ownerCount).to.be.equal(3);
+
             const { acc1, acc2, acc3 } = await getNamedAccounts();
             let owners = [];
             for (let i = 0; i < ownerCount; i++) {
@@ -28,6 +34,7 @@ skip.if(!developmentChains.includes(network.name)).describe(
                 owners.push(owner);
             }
             let own = [acc1, acc2, acc3];
+
             expect(JSON.stringify(own) == JSON.stringify(owners)).to.be.true;
         });
 
@@ -36,19 +43,125 @@ skip.if(!developmentChains.includes(network.name)).describe(
             expect(requiredCount).to.equal(2);
         });
 
-        //send transaction let from yesterday
-        it("should receive funds with fallback function", async () => {
+        it("should receive funds with fallback function and emit the event", async () => {
             const [deployer] = await ethers.getSigners();
 
             let tx = {
                 // from: deployer.address,
                 to: contractAddress,
-                value: ethers.utils.parseUnits("1", "ether").toHexString(),
+                value: ethers.utils.parseUnits("10000", "wei").toHexString(),
             };
             let sendTx = await deployer.sendTransaction(tx);
             let receipt = await sendTx.wait(1);
             let contractBal = await multisig.getBalance();
-            expect(contractBal).to.equal(ethers.utils.parseUnits("1", "ether"));
+            expect(contractBal).to.equal(
+                ethers.utils.parseUnits("10000", "wei")
+            );
+        });
+
+        it("should emit the deposit event", async () => {
+            const [deployer] = await ethers.getSigners();
+
+            let tx = {
+                // from: deployer.address,
+                to: contractAddress,
+                value: ethers.utils.parseUnits("10000", "wei").toHexString(),
+            };
+            await expect(await deployer.sendTransaction(tx))
+                .to.emit(multisig, "Deposit")
+                .withArgs(deployer.address, tx.value);
+        });
+
+        describe("Submit Tx to Contract", async function () {
+            beforeEach(async () => {
+                await deployments.fixture(["multisig"]);
+                const Multisig = await deployments.get("Multisig");
+                contractAddress = Multisig.address;
+                multisig = await ethers.getContractAt(
+                    "Multisig",
+                    contractAddress
+                );
+            });
+
+            it("should not submit tx, revert with onlyOwner ", async () => {
+                const accounts = await ethers.getSigners();
+                let tx = [
+                    accounts[4].address,
+                    ethers.utils.parseUnits("10000", "wei"),
+                    "0x",
+                ];
+                await expect(
+                    multisig.submit(tx[0], tx[1], tx[2])
+                ).to.be.revertedWith("onlyOwner");
+            });
+
+            it("should submit Tx", async () => {
+                const accounts = await ethers.getSigners();
+                let multisigAcc1 = await multisig.connect(accounts[1]);
+                let tx = [
+                    accounts[4].address,
+                    ethers.utils.parseUnits("10000", "wei"),
+                    "0x",
+                ];
+                let submitTx = await multisigAcc1.submit(tx[0], tx[1], tx[2]);
+                await submitTx.wait(1);
+                let retrieveTx = await multisig.transactions(0);
+                expect(tx.toString() + ",false" == retrieveTx.toString()).to.be
+                    .true;
+            });
+        });
+
+        describe("Tx approve, revoke and submit", async function () {
+            beforeEach(async () => {
+                await deployments.fixture(["multisig"]);
+                const Multisig = await deployments.get("Multisig");
+                contractAddress = Multisig.address;
+                multisig = await ethers.getContractAt(
+                    "Multisig",
+                    contractAddress
+                );
+
+                const accounts = await ethers.getSigners();
+                let multisigAcc1 = await multisig.connect(accounts[1]);
+                let tx = [
+                    accounts[4].address,
+                    ethers.utils.parseUnits("10000", "wei"),
+                    "0x",
+                ];
+                let submitTx = await multisigAcc1.submit(tx[0], tx[1], tx[2]);
+                await submitTx.wait(1);
+            });
+
+            it("approve fail with onlyOwner", async () => {
+                await expect(multisig.approve(0)).to.be.revertedWith(
+                    "onlyOwner"
+                );
+            });
+
+            it("approve fail with txExists", async () => {
+                const accounts = await ethers.getSigners();
+                let multisigAcc1 = await multisig.connect(accounts[1]);
+                await expect(multisigAcc1.approve(5)).to.be.revertedWith(
+                    "tx does not exists"
+                );
+            });
+
+            //ToDo: tests for failing tx with notApproved and notExcuted left
+
+            it("should approve the tx", async () => {
+                const accounts = await ethers.getSigners();
+                let multisigAcc1 = await multisig.connect(accounts[1]);
+
+                let approveTx = await multisigAcc1.approve(0);
+                await approveTx.wait(1);
+
+                let checkApprove = await multisig.approved(
+                    0,
+                    accounts[1].address
+                );
+
+                expect(checkApprove === true).to.be.true;
+            });
         });
     }
 );

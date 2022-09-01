@@ -1,6 +1,7 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("hardhat-deploy");
 require("@nomiclabs/hardhat-ethers");
+// require("@nomicfoundation/hardhat-chai-matchers");
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -21,6 +22,9 @@ module.exports = {
         },
         acc3: {
             default: 3,
+        },
+        acc4: {
+            default: 4,
         },
     },
 };

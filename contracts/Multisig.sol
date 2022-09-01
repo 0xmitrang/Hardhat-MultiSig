@@ -70,6 +70,14 @@ contract Multisig {
         count = owners.length;
     }
 
+    function getApproveMap(uint256 _txId, address _add)
+        external
+        view
+        returns (bool)
+    {
+        return approved[_txId][_add];
+    }
+
     function submit(
         address _to,
         uint256 _value,

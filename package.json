@@ -10,18 +10,18 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
+        "bn.js": "^5.2.1",
         "dotenv": "^16.0.1",
         "ethers": "^5.7.0",
         "hardhat": "^2.10.2",
-        "hardhat-shorthand": "^1.0.0",
         "hardhat-deploy": "^0.11.12",
-        "mocha-skip-if": "^0.0.3",
-        "bn.js": "^5.2.1"
+        "hardhat-shorthand": "^1.0.0",
+        "mocha-skip-if": "^0.0.3"
     },
     "devDependencies": {
-        "@nomicfoundation/hardhat-toolbox": "^1.0.2",
         "@nomicfoundation/hardhat-chai-matchers": "^1.0.3",
         "@nomicfoundation/hardhat-network-helpers": "^1.0.4",
+        "@nomicfoundation/hardhat-toolbox": "^1.0.2",
         "@nomiclabs/hardhat-ethers": "^2.1.1",
         "@nomiclabs/hardhat-etherscan": "^3.1.0",
         "chai": "^4.3.6"
